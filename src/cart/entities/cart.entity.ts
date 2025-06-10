@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { Product } from '../produtos/produtos.entity';
+import { Product } from '../produ/product.entity';
 
 @Entity()
 export class CartItem {

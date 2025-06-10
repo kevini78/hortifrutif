@@ -1,82 +1,53 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  Query,
-  ParseIntPipe,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, ParseIntPipe } from '@nestjs/common';
 import { CartService } from './cart.service';
-import { AddToCartDto } from './dto/add-to-cart.dto';
-import { UpdateCartItemDto } from './dto/update-cart-item.dto';
-import { CartItem } from './entities/cart.entity';
+import { AddItemToCartDto } from './dto/add-item-to-cart.dto';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
+import { User } from '../users/entities/user.entity';
 
 @ApiTags('cart')
 @Controller('cart')
+@ApiBearerAuth()
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
-  @Post('add')
-  @ApiOperation({ summary: 'Adicionar produto ao carrinho' })
-  @ApiResponse({ status: 201, description: 'Produto adicionado ao carrinho', type: CartItem })
-  @ApiResponse({ status: 404, description: 'Produto não encontrado' })
-  addToCart(@Body() addToCartDto: AddToCartDto): Promise<CartItem> {
-    return this.cartService.addToCart(addToCartDto);
+  @Post('add-item')
+  @ApiOperation({ summary: 'Add item to cart' })
+  @ApiResponse({ status: 201, description: 'Item added to cart' })
+  @ApiResponse({ status: 404, description: 'Product not found' })
+  async addItemToCart(@Req() request: Request, @Body() addItemToCartDto: AddItemToCartDto) {
+    const user = request.user as User;
+    return this.cartService.addItemToCart(user, addItemToCartDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar itens do carrinho' })
-  @ApiQuery({ name: 'sessionId', description: 'ID da sessão do usuário' })
-  @ApiResponse({ status: 200, description: 'Lista de itens do carrinho', type: [CartItem] })
-  getCart(@Query('sessionId') sessionId: string): Promise<CartItem[]> {
-    return this.cartService.getCart(sessionId);
+  @ApiOperation({ summary: 'Get user cart' })
+  @ApiResponse({ status: 200, description: 'Cart retrieved' })
+  @ApiResponse({ status: 404, description: 'Cart not found' })
+  async getCart(@Req() request: Request) {
+    const user = request.user as User;
+    return this.cartService.getCart(user);
   }
 
-  @Get('total')
-  @ApiOperation({ summary: 'Obter total do carrinho' })
-  @ApiQuery({ name: 'sessionId', description: 'ID da sessão do usuário' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Total do carrinho',
-    schema: {
-      type: 'object',
-      properties: {
-        total: { type: 'number', example: 25.99 },
-        itemCount: { type: 'number', example: 3 }
-      }
-    }
-  })
-  async getCartTotal(@Query('sessionId') sessionId: string) {
-    return this.cartService.getCartTotal(sessionId);
+  @Patch('item/:itemId/quantity/:quantity')
+  @ApiOperation({ summary: 'Update item quantity in cart' })
+  @ApiResponse({ status: 200, description: 'Item quantity updated' })
+  @ApiResponse({ status: 404, description: 'Item not found' })
+  async updateItemQuantity(
+    @Req() request: Request,
+    @Param('itemId', ParseIntPipe) itemId: number,
+    @Param('quantity', ParseIntPipe) quantity: number,
+  ) {
+    const user = request.user as User;
+    return this.cartService.updateItemQuantity(user.id, itemId, quantity);
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Atualizar quantidade do item no carrinho' })
-  @ApiResponse({ status: 200, description: 'Item atualizado com sucesso', type: CartItem })
-  @ApiResponse({ status: 404, description: 'Item não encontrado' })
-  updateCartItem(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateCartItemDto: UpdateCartItemDto,
-  ): Promise<CartItem> {
-    return this.cartService.updateCartItem(id, updateCartItemDto);
-  }
-
-  @Delete(':id')
-  @ApiOperation({ summary: 'Remover item do carrinho' })
-  @ApiResponse({ status: 200, description: 'Item removido com sucesso' })
-  @ApiResponse({ status: 404, description: 'Item não encontrado' })
-  removeFromCart(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.cartService.removeFromCart(id);
-  }
-
-  @Delete('clear/:sessionId')
-  @ApiOperation({ summary: 'Limpar carrinho' })
-  @ApiResponse({ status: 200, description: 'Carrinho limpo com sucesso' })
-  clearCart(@Param('sessionId') sessionId: string): Promise<void> {
-    return this.cartService.clearCart(sessionId);
+  @Delete('item/:itemId')
+  @ApiOperation({ summary: 'Remove item from cart' })
+  @ApiResponse({ status: 200, description: 'Item removed' })
+  @ApiResponse({ status: 404, description: 'Item not found' })
+  async removeItemFromCart(@Req() request: Request, @Param('itemId', ParseIntPipe) itemId: number) {
+    const user = request.user as User;
+    return this.cartService.removeItemFromCart(user.id, itemId);
   }
 }
