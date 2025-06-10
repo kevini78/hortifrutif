@@ -1,42 +1,58 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Produto } from './entities/produto.entity';
-import { CreateProdutoDto } from './dto/create-produto.dto';
-import { UpdateProdutoDto } from './dto/update-produto.dto';
+import { Repository, Like } from 'typeorm';
+import { Product } from './entities/produto.entity';
+import { CreateProductDto } from './dto/create-produto.dto';
+import { UpdateProductDto } from './dto/update-produto.dto';
 
 @Injectable()
-export class ProdutosService {
+export class ProductService {
   constructor(
-    @InjectRepository(Produto)
-    private produtoRepository: Repository<Produto>,
+    @InjectRepository(Product)
+    private productRepository: Repository<Product>,
   ) {}
 
-  async create(createProdutoDto: CreateProdutoDto): Promise<Produto> {
-    const produto = this.produtoRepository.create(createProdutoDto);
-    return await this.produtoRepository.save(produto);
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    const product = this.productRepository.create(createProductDto);
+    return this.productRepository.save(product);
   }
 
-  async findAll(): Promise<Produto[]> {
-    return await this.produtoRepository.find();
+  async uploadImage(id: number, file: Express.Multer.File): Promise<Product> {
+    const product = await this.findOne(id);
+    product.imageUrl = `/uploads/${file.filename}`;
+    return this.productRepository.save(product);
   }
 
-  async findOne(id: number): Promise<Produto> {
-    const produto = await this.produtoRepository.findOne({ where: { id } });
-    if (!produto) {
-      throw new NotFoundException(`Produto com ID ${id} não encontrado.`);
+  async findAll(category?: string, search?: string): Promise<Product[]> {
+    const where: any = { isActive: true };
+    
+    if (category) {
+      where.category = category;
     }
-    return produto;
+    
+    if (search) {
+      where.name = Like(`%${search}%`);
+    }
+
+    return this.productRepository.find({ where });
   }
 
-  async update(id: number, updateProdutoDto: UpdateProdutoDto): Promise<Produto> {
-    const produto = await this.findOne(id);
-    this.produtoRepository.merge(produto, updateProdutoDto);
-    return await this.produtoRepository.save(produto);
+  async findOne(id: number): Promise<Product> {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(`Produto com ID ${id} não encontrado`);
+    }
+    return product;
+  }
+
+  async update(id: number, updateProductDto: UpdateProductDto): Promise<Product> {
+    const product = await this.findOne(id);
+    Object.assign(product, updateProductDto);
+    return this.productRepository.save(product);
   }
 
   async remove(id: number): Promise<void> {
-    const produto = await this.findOne(id);
-    await this.produtoRepository.remove(produto);
+    const product = await this.findOne(id);
+    await this.productRepository.remove(product);
   }
 }

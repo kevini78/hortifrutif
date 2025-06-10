@@ -1,60 +1,64 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
+import { RequestPasswordRecoveryDto } from './dto/request-password-recovery.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UsersService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.usersService.findOneByEmail(email);
-    if (user && await bcrypt.compare(pass, user.password)) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async login(loginDto: LoginDto): Promise<{ access_token: string }> {
+    const { email, password } = loginDto;
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException('Credenciais inválidas');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Credenciais inválidas');
+    }
+
+    const payload = { sub: user.id, email: user.email };
+    return {
+      access_token: await this.jwtService.signAsync(payload),
+    };
+  }
+
+  async validateUser(email: string, password: string): Promise<any> {
+    const user = await this.usersService.findByEmail(email);
+    if (user && (await bcrypt.compare(password, user.password))) {
       const { password, ...result } = user;
-      return result; // Return user object without password
+      return result;
     }
     return null;
   }
 
-  async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
+  async requestPasswordRecovery(dto: RequestPasswordRecoveryDto): Promise<void> {
+    const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
-      throw new UnauthorizedException('Credenciais inválidas');
+      throw new NotFoundException('Usuário não encontrado');
     }
-    const payload = { email: user.email, sub: user.id, name: user.name }; // Include necessary user info in payload
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
+    // Placeholder: Implement email sending logic (e.g., generate token, send email)
+    console.log(`Password recovery requested for ${dto.email}`);
   }
 
-  // Placeholder for password recovery logic
-  async requestPasswordRecovery(email: string): Promise<{ message: string }> {
-    const user = await this.usersService.findOneByEmail(email);
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
-      // Don't reveal if user exists for security reasons
-      console.log(`Password recovery requested for non-existent email: ${email}`);
-    } else {
-      // In a real app: generate a unique token, store it with expiration, send email
-      console.log(`Password recovery requested for user: ${user.email}. Token generation/email sending would happen here.`);
+      throw new NotFoundException('Usuário não encontrado');
     }
-    // Always return a generic message
-    return { message: 'Se um usuário com este email existir, um link de recuperação foi enviado.' };
-  }
-
-  // Placeholder for password reset logic
-  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
-    // In a real app: validate token, find user, update password, invalidate token
-    console.log(`Password reset attempt with token: ${token}. Validation and update would happen here.`);
-    // For now, just a placeholder response
-    if (!token || !newPassword) { // Basic check
-        throw new UnauthorizedException('Token ou nova senha inválidos.');
+    // Placeholder: Verify token
+    if (dto.token !== 'valid-token') {
+      throw new UnauthorizedException('Token inválido');
     }
-    return { message: 'Senha redefinida com sucesso (simulação).' };
+    const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
+    await this.usersService.update(user.id, { password: hashedPassword });
   }
-
 }

@@ -5,18 +5,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CartModule } from '../cart/cart.module';
-import { ProdutosModule } from '../produtos/produtos.module';
+import { UsersModule } from '../users/users.module';
 import { AddressModule } from '../adress/adress.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Order, OrderItem]),
     CartModule,
-    ProdutosModule,
+    UsersModule,
     AddressModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
-  exports: [OrdersService],
+  exports: [OrdersService], // Ensure OrdersService is exported
 })
 export class OrdersModule {}

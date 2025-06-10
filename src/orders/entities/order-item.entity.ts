@@ -1,33 +1,27 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 import { Order } from './order.entity';
-import { Produto } from '../../produtos/entities/produto.entity'; // Corrected path
+import { Produto } from '../../produtos/entities/produto.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
-@Entity({ name: 'order_items' })
+@Entity()
 export class OrderItem {
   @PrimaryGeneratedColumn()
+  @ApiProperty({ description: 'ID do item do pedido', example: 1 })
   id: number;
 
-  @ManyToOne(() => Order, (order) => order.items, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'orderId' })
+  @ManyToOne(() => Order, (order) => order.items)
+  @ApiProperty({ description: 'Pedido ao qual o item pertence' })
   order: Order;
 
-  @Column()
-  orderId: number;
-
-  // Link to the product snapshot at the time of order
-  @ManyToOne(() => Produto, { eager: true, onDelete: 'SET NULL', nullable: true }) // Allow product to be deleted without deleting order item
-  @JoinColumn({ name: 'produtoId' })
-  produto?: Produto; // Make optional in case product is deleted
-
-  @Column({ nullable: true }) // Allow null if product is deleted
-  produtoId?: number;
+  @ManyToOne(() => Produto)
+  @ApiProperty({ description: 'Produto no pedido', nullable: true })
+  produto?: Produto;
 
   @Column()
-  quantidade: number;
+  @ApiProperty({ description: 'Quantidade do produto', example: 2 })
+  quantity: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  precoUnitario: number; // Price at the time of order
-
-  @Column()
-  nomeProduto: string; // Store product name snapshot
+  @Column('decimal')
+  @ApiProperty({ description: 'Preço unitário do produto', example: 5.99 })
+  price: number;
 }

@@ -1,18 +1,65 @@
-import { Module } from "@nestjs/common";
-import { CartService } from "./cart.service";
-import { CartController } from "./cart.controller";
-import { TypeOrmModule } from "@nestjs/typeorm";
-import { Cart } from "./entities/cart.entity";
-import { CartItem } from "./entities/cart-item.entity";
-import { ProdutosModule } from "../produtos/produtos.module"; // Import ProdutosModule
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { CartService } from './cart.service';
+import { CartController } from './cart.controller';
+import { CartItem } from './entities/cart.entity';
+import { ProductModule } from '../produtos/produtos.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Cart, CartItem]), // Register Cart and CartItem repositories
-    ProdutosModule, // Import ProdutosModule to use ProdutosService
-  ],
+  imports: [TypeOrmModule.forFeature([CartItem]), ProductModule],
   controllers: [CartController],
   providers: [CartService],
-  exports: [CartService], // Export CartService if needed by other modules (e.g., OrdersModule)
+  exports: [CartService],
 })
 export class CartModule {}
+
+// payment/payment.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+
+export enum PaymentStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
+export enum PaymentMethod {
+  CREDIT_CARD = 'credit_card',
+  DEBIT_CARD = 'debit_card',
+  PIX = 'pix',
+  BOLETO = 'boleto',
+}
+
+@Entity()
+export class Payment {
+  @ApiProperty({ description: 'ID único do pagamento' })
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ApiProperty({ description: 'ID da sessão do usuário' })
+  @Column()
+  sessionId: string;
+
+  @ApiProperty({ description: 'Valor total do pagamento' })
+  @Column('decimal', { precision: 10, scale: 2 })
+  amount: number;
+
+  @ApiProperty({ description: 'Método de pagamento', enum: PaymentMethod })
+  @Column({ type: 'enum', enum: PaymentMethod })
+  paymentMethod: PaymentMethod;
+
+  @ApiProperty({ description: 'Status do pagamento', enum: PaymentStatus })
+  @Column({ type: 'enum', enum: PaymentStatus, default: PaymentStatus.PENDING })
+  status: PaymentStatus;
+
+  @ApiProperty({ description: 'Detalhes do pagamento (JSON)' })
+  @Column('text', { nullable: true })
+  paymentDetails: string;
+
+  @ApiProperty({ description: 'ID da transação externa' })
+  @Column({ nullable: true })
+  transactionId: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+}

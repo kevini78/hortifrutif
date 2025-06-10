@@ -1,23 +1,28 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from '../../users/entities/user.entity'; // Corrected path
-import { CartItem } from './cart-item.entity'; // Corrected path relative to this file
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { ApiProperty } from '@nestjs/swagger';
+import { Product } from '../produtos/produtos.entity';
 
-@Entity({ name: 'carts' })
-export class Cart {
+@Entity()
+export class CartItem {
+  @ApiProperty({ description: 'ID único do item do carrinho' })
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Link to the user who owns the cart
-  @OneToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
+  @ApiProperty({ description: 'ID da sessão do usuário' })
   @Column()
-  userId: number;
+  sessionId: string;
 
-  // Items in the cart
-  @OneToMany(() => CartItem, (item: CartItem) => item.cart, { cascade: true, eager: true }) // Added type hint
-  items: CartItem[];
+  @ApiProperty({ description: 'Produto no carrinho' })
+  @ManyToOne(() => Product, { eager: true })
+  product: Product;
+
+  @ApiProperty({ description: 'Quantidade do produto' })
+  @Column()
+  quantity: number;
+
+  @ApiProperty({ description: 'Preço unitário no momento da adição' })
+  @Column('decimal', { precision: 10, scale: 2 })
+  unitPrice: number;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,38 +1,80 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as dotenv from 'dotenv';
-dotenv.config();
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+
+  // Configuração do CORS
+  app.enableCors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
+  // Configuração de validação global
+  app.useGlobalPipes(new ValidationPipe({
+    transform: true,
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transformOptions: {
+      enableImplicitConversion: true,
+    },
+  }));
+
+  // Filtros e Interceptors globais
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new LoggingInterceptor());
+
+  // Servir arquivos estáticos (uploads)
+  app.useStaticAssets('./uploads', {
+    prefix: '/uploads/',
+  });
+
+  // Configuração do Swagger
   const config = new DocumentBuilder()
     .setTitle('Hortifruti API')
-    .setDescription('API para o sistema de hortifruti CLI')
+    .setDescription(`
+      ## API para gerenciamento de hortifruti com carrinho de compras
+      
+      ### Funcionalidades:
+      - ✅ CRUD completo de produtos
+      - ✅ Upload de imagens
+      - ✅ Sistema de carrinho por sessão
+      - ✅ Pagamento fictício
+      - ✅ Validações completas
+      
+      ### Como usar:
+      1. Crie produtos usando POST /products
+      2. Faça upload de imagens com POST /products/{id}/upload-image
+      3. Adicione produtos ao carrinho com POST /cart/add
+      4. Processe o pagamento com POST /payment/process
+      
+      ### Session ID:
+      Use um identificador único por usuário (ex: "user-123", "session-abc")
+    `)
     .setVersion('1.0')
-    .addTag('auth', 'Operações de Autenticação')
-    .addTag('users', 'Operações de Usuários')
-    .addTag('produtos', 'Operações de Produtos')
-    .addTag('cart', 'Operações de Carrinho')
-    .addTag('orders', 'Operações de Pedidos')
-    .addTag('address', 'Operações de Endereços')
-    .addTag('reviews', 'Operações de Avaliações')
-    .addBearerAuth()
+    .addTag('products', 'Operações de produtos')
+    .addTag('cart', 'Operações do carrinho')
+    .addTag('payment', 'Operações de pagamento')
     .build();
+
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
+
   const port = process.env.PORT || 3000;
-  await app.listen(3000,'127.0.0.1');
-  console.log(`Application is running on: ${await app.getUrl()}`);
-  console.log(`Swagger documentation available at: ${await app.getUrl()}/api`);
+  await app.listen(port);
+  
+  console.log(`🚀 API rodando em http://localhost:${port}`);
+  console.log(`📚 Swagger disponível em http://localhost:${port}/api`);
+  console.log(`📁 Upload de imagens: http://localhost:${port}/uploads/`);
 }
 bootstrap();

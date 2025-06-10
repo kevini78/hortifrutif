@@ -1,26 +1,34 @@
-import { IsString, IsNotEmpty, IsNumber, Min, IsOptional, IsInt } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger'; // Import ApiProperty
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNumber, IsOptional, Min, IsBoolean } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class CreateProdutoDto {
-  @ApiProperty({ description: 'Nome do produto', example: 'Maçã Gala' })
-  @IsNotEmpty({ message: 'O nome não pode estar vazio' })
+export class CreateProductDto {
+  @ApiProperty({ description: 'Nome do produto', example: 'Maçã Fuji' })
   @IsString()
-  nome: string;
+  name: string;
 
-  @ApiProperty({ description: 'Descrição detalhada do produto', example: 'Maçã Gala fresca, ideal para sucos e consumo in natura.', required: false })
-  @IsOptional()
+  @ApiProperty({ description: 'Descrição do produto', example: 'Maçã Fuji fresca e doce' })
   @IsString()
-  descricao?: string;
+  description: string;
 
-  @ApiProperty({ description: 'Preço unitário do produto', example: 5.99 })
-  @IsNotEmpty({ message: 'O preço não pode estar vazio' })
-  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'O preço deve ser um número com até 2 casas decimais' })
-  @Min(0.01, { message: 'O preço deve ser maior que zero' })
-  preco: number;
+  @ApiProperty({ description: 'Preço do produto', example: 5.99 })
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  price: number;
 
-  @ApiProperty({ description: 'Quantidade em estoque', example: 100, default: 0 })
+  @ApiProperty({ description: 'Categoria do produto', example: 'Frutas' })
+  @IsString()
+  category: string;
+
+  @ApiProperty({ description: 'Quantidade em estoque', example: 100 })
+  @IsNumber()
+  @Min(0)
+  @Type(() => Number)
+  stock: number;
+
+  @ApiProperty({ description: 'Indica se o produto está ativo', example: true })
   @IsOptional()
-  @IsInt({ message: 'O estoque deve ser um número inteiro' })
-  @Min(0, { message: 'O estoque não pode ser negativo' })
-  estoque?: number;
+  @IsBoolean()
+  isActive?: boolean;
 }

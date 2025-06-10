@@ -1,67 +1,94 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UsePipes, ValidationPipe, ParseIntPipe, UseGuards } from '@nestjs/common';
-import { ProdutosService } from './produtos.service';
-import { CreateProdutoDto } from './dto/create-produto.dto';
-import { UpdateProdutoDto } from './dto/update-produto.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
-import { Produto } from './entities/produto.entity';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseInterceptors,
+  UploadedFile,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ProductService } from './produtos.service';
+import { CreateProductDto } from './dto/create-produto.dto';
+import { UpdateProductDto } from './dto/update-produto.dto';
+import { Product } from './entities/produto.entity';
 
-@ApiTags('produtos')
-@Controller('produtos')
-export class ProdutosController {
-  constructor(private readonly produtosService: ProdutosService) {}
+@ApiTags('products')
+@Controller('products')
+export class ProductController {
+  constructor(private readonly productService: ProductService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
   @ApiOperation({ summary: 'Criar um novo produto' })
-  @ApiResponse({ status: 201, description: 'Produto criado com sucesso.', type: Produto })
-  @ApiResponse({ status: 400, description: 'Dados inválidos.' })
-  @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  create(@Body() createProdutoDto: CreateProdutoDto): Promise<Produto> {
-    return this.produtosService.create(createProdutoDto);
+  @ApiResponse({ status: 201, description: 'Produto criado com sucesso', type: Product })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  create(@Body() createProductDto: CreateProductDto): Promise<Product> {
+    return this.productService.create(createProductDto);
+  }
+
+  @Post(':id/upload-image')
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiOperation({ summary: 'Upload de imagem do produto' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        image: {
+          type: 'string',
+          format: 'binary',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Imagem enviada com sucesso', type: Product })
+  @ApiResponse({ status: 404, description: 'Produto não encontrado' })
+  async uploadImage(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<Product> {
+    return this.productService.uploadImage(id, file);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar todos os produtos' })
-  @ApiResponse({ status: 200, description: 'Lista de produtos retornada com sucesso.', type: [Produto] })
-  findAll(): Promise<Produto[]> {
-    return this.produtosService.findAll();
+  @ApiResponse({ status: 200, description: 'Lista de produtos', type: [Product] })
+  findAll(
+    @Query('category') category?: string,
+    @Query('search') search?: string,
+  ): Promise<Product[]> {
+    return this.productService.findAll(category, search);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obter detalhes de um produto específico' })
-  @ApiParam({ name: 'id', description: 'ID do produto', type: Number })
-  @ApiResponse({ status: 200, description: 'Detalhes do produto retornados com sucesso.', type: Produto })
-  @ApiResponse({ status: 404, description: 'Produto não encontrado.' })
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<Produto> {
-    return this.produtosService.findOne(id);
+  @ApiOperation({ summary: 'Buscar produto por ID' })
+  @ApiResponse({ status: 200, description: 'Produto encontrado', type: Product })
+  @ApiResponse({ status: 404, description: 'Produto não encontrado' })
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<Product> {
+    return this.productService.findOne(id);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-  @ApiOperation({ summary: 'Atualizar um produto existente' })
-  @ApiParam({ name: 'id', description: 'ID do produto a ser atualizado', type: Number })
-  @ApiResponse({ status: 200, description: 'Produto atualizado com sucesso.', type: Produto })
-  @ApiResponse({ status: 400, description: 'Dados inválidos.' })
-  @ApiResponse({ status: 404, description: 'Produto não encontrado.' })
-  @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() updateProdutoDto: UpdateProdutoDto): Promise<Produto> {
-    return this.produtosService.update(id, updateProdutoDto);
+  @ApiOperation({ summary: 'Atualizar produto' })
+  @ApiResponse({ status: 200, description: 'Produto atualizado com sucesso', type: Product })
+  @ApiResponse({ status: 404, description: 'Produto não encontrado' })
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateProductDto: UpdateProductDto,
+  ): Promise<Product> {
+    return this.productService.update(id, updateProductDto);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remover um produto' })
-  @ApiParam({ name: 'id', description: 'ID do produto a ser removido', type: Number })
-  @ApiResponse({ status: 204, description: 'Produto removido com sucesso.' })
-  @ApiResponse({ status: 404, description: 'Produto não encontrado.' })
-  @ApiResponse({ status: 401, description: 'Não autorizado.' })
+  @ApiOperation({ summary: 'Deletar produto' })
+  @ApiResponse({ status: 200, description: 'Produto deletado com sucesso' })
+  @ApiResponse({ status: 404, description: 'Produto não encontrado' })
   remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.produtosService.remove(id);
+    return this.productService.remove(id);
   }
 }

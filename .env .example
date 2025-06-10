@@ -1,0 +1,4 @@
+PORT=3000
+DB_TYPE=sqlite
+DB_DATABASE=hortifruti.db
+UPLOAD_PATH=./uploads
